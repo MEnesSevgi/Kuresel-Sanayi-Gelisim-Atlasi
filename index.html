@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <title>Küresel Sanayi Gelişim Atlası</title>
+    
+
+  </head>
+    
+  <body>
+  <!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Küresel Sanayi Gelişim Atlası</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #c5a059;
+            --background-color: #f8f9fa;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            flex-direction: row;
+            font-family: 'Arial', sans-serif;
+            background: var(--background-color);
+            overflow: hidden;
+        }
+
+        #map {
+            flex: 1;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #info-panel {
+            width: 450px;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .header {
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid var(--secondary-color);
+            flex-shrink: 0; /* Başlığın küçülmesini engeller */
+        }
+
+        .header h1 { margin: 0; font-size: 18px; letter-spacing: 1.5px; }
+
+        .selector-area {
+            padding: 15px;
+            background: #f1f1f1;
+            border-bottom: 1px solid #ddd;
+            flex-shrink: 0; /* Seçim alanının küçülmesini engeller */
+        }
+
+        #event-selector {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 2px solid var(--secondary-color);
+            font-size: 14px;
+            background: white;
+        }
+
+        #content-area {
+            padding: 20px;
+            overflow-y: auto; /* İçerik taşarsa panel içinde kaydırılır */
+            flex: 1; /* Panelin kalan tüm boşluğunu doldurur */
+            display: flex;
+            flex-direction: column;
+        }
+
+        #event-title { font-size: 22px; color: var(--primary-color); margin-top: 0; }
+
+        #event-desc {
+            line-height: 1.6;
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        #event-img {
+            width: 100%;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            object-fit: cover;
+            max-height: 200px;
+            display: none;
+        }
+
+        #wiki-link {
+            display: none;
+            padding: 12px;
+            background-color: var(--primary-color);
+            color: var(--secondary-color);
+            text-decoration: none;
+            text-align: center;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-top: auto; /* Butonu her zaman en alta iter */
+            flex-shrink: 0;
+        }
+
+        /* --- MOBİL GÜNCELLEMELERİ --- */
+        @media (max-width: 850px) {
+            body { flex-direction: column; }
+
+            #map {
+                height: 45vh; /* Tam %50 yükseklik */
+                
+                flex: none;
+            }
+
+            #info-panel {
+                width: 100%;
+                height: 50vh; /* Tam %50 yükseklik */
+                box-shadow: 0 -5px 15px rgba(0,0,0,0.1);
+            }
+
+            .header { padding: 10px; }
+            .header h1 { font-size: 16px; }
+            
+            #content-area {
+                padding: 15px;
+                /* İçeriğin butonun altında kalmaması için padding-bottom ekliyoruz */
+                padding-bottom: 20px; 
+            }
+
+            #wiki-link {
+                margin-top: 15px;
+                position: sticky; /* Kaydırma yapılsa bile görünür kalabilir */
+                bottom: 0;
+            }
+        }
+
+        .custom-marker {
+            background-color: var(--secondary-color);
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="info-panel">
+    <div class="header"><h1>Küresel Sanayi Gelişim Atlası</h1></div>
+
+    <div class="selector-area">
+        <select id="event-selector" onchange="selectEvent(this.value)">
+            <option value="">Bir Olay Seçin...</option>
+        </select>
+    </div>
+
+    <div id="content-area">
+        <h2 id="event-title">Keşfetmeye Başla</h2>
+        
+        <img id="event-img" src="" alt="Olay Görseli" />
+      <a id="wiki-link" href="#" target="_blank">Detaylı Bilgi (Wikipedia)</a>
+        <div id="event-desc">Kategorilerden birini seçerek sanayi tarihindeki önemli olayları inceleyebilirsiniz.</div>
+      
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Industrial Events Verisi (Aynen Korundu)
+    const industrialEvents = [
+       // --- ENDÜSTRİ 1.0: BUHAR VE MEKANİZASYON (1760 - 1860) ---
+  { name: "Bridgewater Kanalı", era: "e1", year: 1761, event: "Lojistik devrimi.", lat: 53.4475, lng: -2.3789, wiki: "Bridgewater_Canal", desc: "Francis Egerton tarafından inşa edilen ve kömür taşımacılığını ucuzlatan ilk modern kanal." },
+  { name: "Spinning Jenny", era: "e1", year: 1764, event: "Tekstil devrimi.", lat: 53.7489, lng: -2.4821, wiki: "Spinning_jenny", desc: "James Hargreaves tarafından icat edilen çoklu iplik eğirme makinesi." },
+  { name: "Iron Bridge", era: "e1", year: 1779, event: "Yapısal metalurji.", lat: 52.6272, lng: -2.4855, wiki: "The_Iron_Bridge", desc: "Abraham Darby III tarafından inşa edilen dünyanın ilk dökme demir köprüsü." },
+  { name: "Watt Buhar Makinesi", era: "e1", year: 1776, event: "Güç kaynağı.", lat: 52.4862, lng: -1.8904, wiki: "James_Watt", desc: "James Watt tarafından geliştirilen buhar makinesi." },
+  { name: "Puddling Fırını", era: "e1", year: 1784, event: "Demir üretiminde yenilik.", lat: 50.8421, lng: -1.1312, wiki: "Puddling_(metallurgy)", desc: "Henry Cort tarafından icat edilen fırın." },
+  { name: "Pamuk Çırçırı", era: "e1", year: 1793, event: "Kritik icat.", lat: 32.0809, lng: -81.0912, wiki: "Cotton_gin", desc: "Eli Whitney tarafından icat edilen otomatik ayrıştırma makinesi." },
+  { name: "İlk Buharlı Lokomotif", era: "e1", year: 1804, event: "Yeni bir çağ.", lat: 51.7479, lng: -3.3765, wiki: "Steam_locomotive", desc: "Richard Trevithick tarafından icat edilen lokomotif." },
+  { name: "Buharlı Gemi (Clermont)", era: "e1", year: 1807, event: "Taşımacılıkta devrim.", lat: 40.7128, lng: -74.0060, wiki: "North_River_Steamboat", desc: "Robert Fulton tarafından inşa edilen buharlı gemi." },
+  { name: "Jacquard Tezgahı", era: "e1", year: 1804, event: "Otomatik desenler.", lat: 45.7640, lng: 4.8357, wiki: "Jacquard_loom", desc: "Joseph Marie Jacquard tarafından icat edilen tezgah." },
+  { name: "Gaz Lambası Aydınlatma", era: "e1", year: 1812, event: "Aydınlatma devrimi.", lat: 51.5074, lng: -0.1278, wiki: "Gas_lighting", desc: "Gas Light & Coke Co. tarafından geliştirilen aydınlatma sistemi." },
+  { name: "Stirling Motoru", era: "e1", year: 1816, event: "Alternatif enerji.", lat: 55.9533, lng: -3.1883, wiki: "Stirling_engine", desc: "Robert Stirling tarafından icat edilen motor." },
+  { name: "McCormick Biçerdöver", era: "e1", year: 1831, event: "Tarımda makineleşme.", lat: 37.9268, lng: -79.0753, wiki: "Reaper", desc: "Cyrus McCormick tarafından icat edilen biçerdöver." },
+  { name: "Elektrikli Telgraf", era: "e1", year: 1837, event: "Hızlı iletişim.", lat: 51.5236, lng: -0.1585, wiki: "Telegraphy", desc: "Morse & Cooke tarafından icat edilen iletişim aracı." },
+  { name: "Bessemer Dönüştürücü", era: "e1", year: 1856, event: "Çelik üretimi.", lat: 53.3811, lng: -1.4701, wiki: "Bessemer_process", desc: "Henry Bessemer tarafından geliştirilen çelik üretim yöntemi." },
+
+  // --- ENDÜSTRİ 2.0: ELEKTRİK VE SERİ ÜRETİM (1870 - 1914) ---
+  { name: "Trans-Kıtasal Demiryolu", era: "e2", year: 1869, event: "Küresel ticaret.", lat: 41.2230, lng: -112.1231, wiki: "First_transcontinental_railroad", desc: "Union Pacific tarafından inşa edilen demiryolu." },
+  { name: "Telefonun İcadı", era: "e2", year: 1876, event: "İletişimde devrim.", lat: 42.3601, lng: -71.0589, wiki: "Telephone", desc: "Alexander Graham Bell tarafından icat edilen telefon." },
+  { name: "Otto Motoru", era: "e2", year: 1876, event: "Mobilite devrimi.", lat: 50.9413, lng: 6.9583, wiki: "Otto_engine", desc: "Nicolaus Otto tarafından icat edilen içten yanmalı motor." },
+  { name: "Pearl Street İstasyonu", era: "e2", year: 1882, event: "Ampul ile aydınlatma.", lat: 40.7073, lng: -74.0086, wiki: "Pearl_Street_Station", desc: "Thomas Edison tarafından inşa edilen elektrik istasyonu." },
+  { name: "Benz Patent-Motorwagen", era: "e2", year: 1886, event: "İlk otomobil.", lat: 49.4875, lng: 8.4660, wiki: "Benz_Patent-Motorwagen", desc: "Karl Benz tarafından icat edilen otomobil." },
+  { name: "Alternatif Akım (AC)", era: "e2", year: 1888, event: "Elektrik yayılımı.", lat: 40.4406, lng: -79.9959, wiki: "Alternating_current", desc: "Nikola Tesla tarafından geliştirilen elektrik sistemi." },
+  { name: "Diesel Motoru", era: "e2", year: 1892, event: "Taşımacılıkta verimlilik.", lat: 48.3705, lng: 10.8978, wiki: "Diesel_engine", desc: "Rudolf Diesel tarafından icat edilen motor." },
+  { name: "Model T Montaj Hattı", era: "e2", year: 1913, event: "Tüketim toplumu.", lat: 42.3957, lng: -83.2201, wiki: "Ford_Model_T", desc: "Henry Ford tarafından geliştirilen montaj hattı." },
+  { name: "Süpermarket Modeli", era: "e2", year: 1916, event: "Tedarik zinciri.", lat: 35.1495, lng: -90.0490, wiki: "Piggly_Wiggly", desc: "Piggly Wiggly tarafından geliştirilen perakende modeli." },
+  { name: "Haber-Bosch Prosesi", era: "e2", year: 1913, event: "Yapay gübre.", lat: 49.4847, lng: 8.4372, wiki: "Haber_process", desc: "BASF tarafından geliştirilen gübre üretim süreci." },
+  
+  // --- ENDÜSTRİ 3.0: OTOMASYON VE BİLGİSAYAR (1950 - 2000) ---
+  { name: "ENIAC Bilgisayar", era: "e3", year: 1945, event: "Veri işleme.", lat: 39.9526, lng: -75.1652, wiki: "ENIAC", desc: "J. Presper Eckert tarafından geliştirilen bilgisayar." },
+  { name: "Transistor", era: "e3", year: 1947, event: "Elektronik devrim.", lat: 40.6826, lng: -74.4011, wiki: "Transistor", desc: "Bell Labs tarafından icat edilen yarı iletken." },
+  { name: "Deniz Konteyneri", era: "e3", year: 1956, event: "Küreselleşme.", lat: 40.6895, lng: -74.1745, wiki: "Intermodal_container", desc: "Malcolm McLean tarafından geliştirilen konteyner." },
+  { name: "Entegre Devre (Chip)", era: "e3", year: 1958, event: "Bilgisayar mimarisi.", lat: 32.7767, lng: -96.7970, wiki: "Integrated_circuit", desc: "Jack Kilby tarafından icat edilen entegre devre." },
+   { name: "Unimate Robotu", era: "e3", year: 1961, event: "Otomasyon.", lat: 40.2206, lng: -74.7597, wiki: "Unimate", desc: "Unimation tarafından geliştirilen robot." },
+  { name: "ARPANET", era: "e3", year: 1969, event: "İnternetin temeli.", lat: 34.0689, lng: -118.4452, wiki: "ARPANET", desc: "DARPA tarafından geliştirilen ağ." },
+  { name: "Intel 4004 (Mikroişlemci)", era: "e3", year: 1971, event: "Tek çip.", lat: 37.3875, lng: -121.9634, wiki: "Intel_4004", desc: "Intel tarafından geliştirilen mikroişlemci." },
+  { name: "TCP/IP Protokolü", era: "e3", year: 1983, event: "Ağ iletişimi.", lat: 37.3861, lng: -122.0839, wiki: "Internet_protocol_suite", desc: "Vint Cerf tarafından geliştirilen protokol." },
+  { name: "Toyota Üretim Sistemi (Lean)", era: "e3", year: 1980, event: "Verimlilik.", lat: 35.0825, lng: 137.1562, wiki: "Toyota_Production_System", desc: "Toyota tarafından geliştirilen üretim sistemi." },
+  { name: "World Wide Web", era: "e3", year: 1989, event: "İnternet devrimi.", lat: 46.2330, lng: 6.0553, wiki: "World_Wide_Web", desc: "Tim Berners-Lee tarafından geliştirilen web." },
+  { name: "GPS'in Sivilleşmesi", era: "e3", year: 2000, event: "Navigasyon.", lat: 38.8951, lng: -77.0364, wiki: "Global_Positioning_System", desc: "ABD Hükümeti tarafından geliştirilen navigasyon sistemi." },
+
+  // --- ENDÜSTRİ 4.0: SİBER-FİZİKSEL SİSTEMLER (2010 - GÜNÜMÜZ) ---
+  { name: "Bitcoin Genesis Bloğu", era: "e4", year: 2009, event: "Finans devrimi.", lat: 35.6762, lng: 139.6503, wiki: "Bitcoin", desc: "Satoshi Nakamoto tarafından oluşturulan blok." },
+  { name: "Tesla Gigafactory 1", era: "e4", year: 2014, event: "Elektrikli araç üretimi.", lat: 39.5390, lng: -119.2785, wiki: "Gigafactory_Nevada", desc: "Tesla tarafından inşa edilen fabrika." },
+  { name: "Kiva Robotları", era: "e4", year: 2012, event: "Depo otomasyonu.", lat: 42.4485, lng: -71.2290, wiki: "Amazon_Robotics", desc: "Amazon Robotics tarafından geliştirilen robotlar." },
+  { name: "AlphaGo Zaferi", era: "e4", year: 2016, event: "Yapay zeka başarısı.", lat: 37.5665, lng: 126.9780, wiki: "AlphaGo_versus_Lee_Sedol", desc: "DeepMind tarafından geliştirilen yapay zeka." },
+  { name: "SpaceX Yeniden Kullanılabilir Roket", era: "e4", year: 2015, event: "Uzay taşımacılığı.", lat: 28.3922, lng: -80.6077, wiki: "SpaceX_v1.1_first-stage_landing_tests", desc: "SpaceX tarafından geliştirilen roket." },
+  { name: "D-Wave Kuantum Bilgisayar", era: "e4", year: 2011, event: "Kuantum hesaplama.", lat: 49.2827, lng: -123.1207, wiki: "D-Wave_Systems", desc: "D-Wave Systems tarafından geliştirilen kuantum bilgisayar." },
+  { name: "Starlink Uydu Ağı", era: "e4", year: 2019, event: "Yüksek hızlı internet.", lat: 33.9211, lng: -118.3273, wiki: "Starlink", desc: "Starlink tarafından geliştirilen uydu ağı." },
+  { name: "CRISPR Gen Düzenleme", era: "e4", year: 2012, event: "Genetik modifikasyon.", lat: 37.8715, lng: -122.2730, wiki: "CRISPR", desc: "Doudna & Charpentier tarafından geliştirilen gen düzenleme teknolojisi." },
+  { name: "ChatGPT (LLM Devrimi)", era: "e4", year: 2022, event: "Yapay zeka entegrasyonu.", lat: 37.7749, lng: -122.4194, wiki: "ChatGPT", desc: "OpenAI tarafından geliştirilen dil modeli." },
+  { name: "3D Yazıcı ile Ev İnşası", era: "e4", year: 2018, event: "Dijital inşaat.", lat: 30.2672, lng: -97.7431, wiki: "3D_printing", desc: "ICON tarafından geliştirilen 3D yazıcı." },
+  { name: "Siemens Amberg (Dijital İkiz)", era: "e4", year: 2015, event: "Dijital kopya.", lat: 49.4447, lng: 11.8527, wiki: "Siemens", desc: "Siemens tarafından geliştirilen dijital ikiz teknolojisi." },
+  { name: "ASML EUV Litografi", era: "e4", year: 2017, event: "Gelişmiş çip üretimi.", lat: 51.4231, lng: 5.4284, wiki: "Extreme_ultraviolet_lithography", desc: "ASML tarafından geliştirilen litografi teknolojisi." },
+  { name: "Boston Dynamics (Atlas)", era: "e4", year: 2013, event: "Otonom robotlar.", lat: 42.3736, lng: -71.1097, wiki: "Atlas_(robot)", desc: "Boston Dynamics tarafından geliştirilen insansı robot." },
+  { name: "CERN Higgs Bozonu Keşfi", era: "e4", year: 2012, event: "Parçacık fiziği.", lat: 46.2333, lng: 6.0491, wiki: "Higgs_boson", desc: "CERN tarafından gerçekleştirilen parçacık hızlandırma deneyleri." },
+  { name: "James Webb Teleskobu", era: "e4", year: 2021, event: "Uzay keşfi.", lat: 5.2359, lng: -52.7685, wiki: "James_Webb_Space_Telescope", desc: "NASA/ESA tarafından geliştirilen uzay teleskobu." },
+  { name: "Solid-State Batarya", era: "e4", year: 2023, event: "Yeni enerji depolama.", lat: 35.0825, lng: 137.1562, wiki: "Solid-state_battery", desc: "Toyota'nın Ar-Ge çalışmalarıyla geliştirilen batarya." },
+  { name: "Nvidia Blackwell (AI Süperçip)", era: "e4", year: 2024, event: "Yapay zeka süperçipi.", lat: 37.3541, lng: -121.9552, wiki: "Nvidia", desc: "Nvidia tarafından geliştirilen süperçip." }
+
+    ];
+
+    const map = L.map("map").setView([30, 15], 2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+    function populateSelect() {
+        const sel = document.getElementById("event-selector");
+        industrialEvents.forEach(item => {
+            const opt = document.createElement("option");
+            opt.value = item.name;
+            opt.textContent = `${item.year} - ${item.event}`;
+            sel.appendChild(opt);
+        });
+    }
+
+    async function selectEvent(eventName) {
+        const selectedEvent = industrialEvents.find(item => item.name === eventName);
+        if (selectedEvent) {
+            map.flyTo([selectedEvent.lat, selectedEvent.lng], 12);
+            document.getElementById("event-title").textContent = selectedEvent.name;
+            
+            const wikiBtn = document.getElementById("wiki-link");
+            wikiBtn.href = `https://en.wikipedia.org/wiki/${selectedEvent.wiki}`;
+            wikiBtn.style.display = "block";
+
+            await updateWiki(selectedEvent.wiki);
+        }
+    }
+
+    async function updateWiki(wikiPage) {
+        const img = document.getElementById("event-img");
+        const descElement = document.getElementById("event-desc");
+        img.style.display = "none";
+        descElement.textContent = "Bilgiler yükleniyor...";
+
+        try {
+            const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiPage}`);
+            const data = await res.json();
+            
+            let shortText = data.extract;
+            if (shortText.length > 400) {
+                const sentences = shortText.match(/[^\.!\?]+[\.!\?]+/g);
+                shortText = sentences ? sentences.slice(0, 2).join(' ') : shortText.substring(0, 400) + "...";
+            }
+
+            const translatedText = await translateText(shortText);
+            descElement.textContent = translatedText;
+            
+            if (data.thumbnail) {
+                img.src = data.thumbnail.source;
+                img.style.display = "block";
+            }
+        } catch (error) {
+            descElement.textContent = "Bilgiye ulaşılamadı.";
+        }
+    }
+
+    async function translateText(text) {
+        const safeText = text.substring(0, 500); 
+        try {
+            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(safeText)}&langpair=en|tr`);
+            const data = await res.json();
+            return data.responseData.translatedText || text;
+        } catch (error) {
+            return text;
+        }
+    }
+
+    industrialEvents.forEach(item => {
+        const marker = L.marker([item.lat, item.lng], {
+            icon: L.divIcon({
+                className: 'custom-marker',
+                html: '<span>📍</span>',
+                iconSize: [20, 20]
+            })
+        }).addTo(map);
+
+        marker.on('click', () => {
+            document.getElementById("event-selector").value = item.name;
+            selectEvent(item.name);
+        });
+    });
+
+    populateSelect();
+</script>
+
+</body>
+</html>
+    
+  </body>
+  
+</html>
