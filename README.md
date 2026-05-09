@@ -1,0 +1,1 @@
+# Kuresel-Sanayi-Gelisim-Atlasi
